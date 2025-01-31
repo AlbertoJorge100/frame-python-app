@@ -12,4 +12,5 @@
 
 #creating the exec file, this will create some directories and the 
 #the executable will be located in the "dist" directory
-- pyinstaller --onefile -w --name <wished name>.exe <script>.py
+# *very important: must run this in the root directory and especify the path to script, ej: scripts/frame.py
+- pyinstaller --onefile -w --name <wished name>.exe scripts/frame.py
