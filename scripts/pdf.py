@@ -8,7 +8,10 @@ ListFiles = []
 Strings = ""
 Directory = None
 BaseMatches = [
-    "Código de Generación", "Número de Control", "Sello de Recepción"
+    "Código de Generación", 
+    "Número de Control", 
+    "Sello de Recepción", 
+    "Fecha y Hora de Generación",
 ]
 MatchTexts = []
 for i in BaseMatches: MatchTexts.append(i)
@@ -70,11 +73,11 @@ def spaces(text):
             return '                  '
         elif text == MatchTexts[2]:
             return '                 '
-        elif text == MatchTexts[3]:
-            return '  '
         elif text == MatchTexts[4]:
-            return ''
+            return '  '
         elif text == MatchTexts[5]:
+            return ''
+        elif text == MatchTexts[6]:
             return '        	     '
     else:
         if text == MatchTexts[0]:
@@ -83,17 +86,17 @@ def spaces(text):
             return '    '
         elif text == MatchTexts[2]:
             return '   '
-        elif text == MatchTexts[3]:
-            return '  '
         elif text == MatchTexts[4]:
-            return '	       '
+            return '  '
         elif text == MatchTexts[5]:
+            return '	       '
+        elif text == MatchTexts[6]:
             return '	       '
 
 def findText(fileName):
-    string=""
+    string = ""
     dte="------------------------------------------------------------------------------\n\n"\
-        f"DTE: {"                                " if ProcessOption == 2 else "                  "}"
+        f"DTE: {"                                " if ProcessOption == 2 else "                  "}"        
     try:
         with pdfplumber.open(os.path.join(Directory, fileName)) as pdf:
             for page in pdf.pages:
@@ -101,9 +104,14 @@ def findText(fileName):
                     result = re.search(rf"{re.escape(text)}:\s*([^\s]+)", page.extract_text())
                     if result:
                         if ProcessOption == 1: return result.group(1)
-                        if (text == MatchTexts[1]):
-                            dte+=f"{re.search(r'0+(\d+)$', result.group(1)).group(1)}"
-                        string+=f"{"IVA 13%" if ProcessOption == 3 and text == MatchTexts[4] else text}: {spaces(text)}{result.group(1)}\n"
+                        if text == MatchTexts[1]:
+                            dte += f"{re.search(r'0+(\d+)$', result.group(1)).group(1)}"
+                        if text == MatchTexts[3]:
+                            dte += f"\nFecha: {"    			     " if ProcessOption == 2 else "                "}"\
+                                f"{(datetime.strptime(result.group(1), "%Y-%m-%d")).strftime("%d-%m-%Y")}"
+                        else: 
+                            string += f"{"IVA 13%" if ProcessOption == 3 and text == MatchTexts[5] else text}:"\
+                                f" {spaces(text)}{result.group(1)}\n"
                         continue
         return None if ProcessOption == 1 else f"{dte}\n{string}\n"
     except Exception as e:
