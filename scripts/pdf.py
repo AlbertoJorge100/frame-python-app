@@ -46,7 +46,10 @@ def setMessage(message, type = 1):
         ErrorsNumber += 1
 
 def getErrorsCounter():
-    return ErrorsNumber
+    global ErrorsNumber
+    number = ErrorsNumber
+    ErrorsNumber = 0
+    return number
 
 def getMessage():
     isFirstOption = ProcessOption == 1
@@ -95,8 +98,10 @@ def spaces(text):
 
 def findText(fileName):
     string = ""
-    dte="------------------------------------------------------------------------------\n\n"\
-        f"DTE: {"                                " if ProcessOption == 2 else "                  "}"        
+    dte=(
+        "-------------------------------------------------------------------------------------------\n\n"
+        f"DTE: {"                                          " if ProcessOption == 2 else "                  "}"
+    )
     try:
         with pdfplumber.open(os.path.join(Directory, fileName)) as pdf:
             for page in pdf.pages:
@@ -115,17 +120,7 @@ def findText(fileName):
                         continue
         return None if ProcessOption == 1 else f"{dte}\n{string}\n"
     except Exception as e:
-        setMessage(f"error {fileName}: {str(e)}", 2)
-    except FileNotFoundError as e:        
-        setMessage(f"No encontrado \"{fileName}\": {str(e)}", 2)
-    except OSError as e:
-        setMessage(f"error {fileName}: {str(e)}", 2)        
-    except pdfplumber.utils.PDFPageCountError as e:
-        setMessage(f"error {fileName}: {str(e)}", 2)
-    except AttributeError as e:
-        setMessage(f"error {fileName}: {str(e)}", 2)
-    except ValueError as e:
-        setMessage(f"error {fileName}: {str(e)}", 2)
+        setMessage(f"error {fileName}: {str(e)}", 2)    
 
 def processPdf(option, directory):
     try:
@@ -160,15 +155,7 @@ def renameFiles():
             try:
                 os.rename(os.path.join(Directory, file['file']), os.path.join(Directory, f"{file['code']}.pdf"))
                 RenamedNumber += 1
-            except FileExistsError as e:
-                setMessage(f"archivo {file['file']} duplicado: {str(e)}", 2)
             except Exception as e:
-                setMessage(f"error {file['file']}: {str(e)}", 2)
-            except OSError as e:
-                setMessage(f"error {file['file']}: {str(e)}", 2)
-            except AttributeError as e:
-                setMessage(f"error {file['file']}: {str(e)}", 2)
-            except ValueError as e:
                 setMessage(f"error {file['file']}: {str(e)}", 2)            
     except Exception as e:
         setMessage(f"error al renombrar los archivos: {str(e)}", 2)

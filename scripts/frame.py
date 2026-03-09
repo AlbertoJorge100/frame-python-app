@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import threading
 import time
+from excel import (processPurchases, getErrorsCounterExcel, getMessageExcel)
 from pdf import (
     processPdf, createTextFile, renameFiles, getMessage, getErrorsCounter, reset
 )
 
-TitleApp = "Proceso de Archivos"
+TitleApp = "Tareas de Archivos"
 Input = None
 Directory = None
 Directory2 = None
@@ -22,7 +23,12 @@ DirButton = None
 Dir2Button = None
 ProcessButton = None
 CmbOptions = None
-CmbArray = ["Renombrar PDF's", "Procesar Liquidaciones", "Procesar Créditos Fiscales"]
+CmbArray = [
+    "Renombrar PDF's", 
+    "Procesar Liquidaciones", 
+    "Procesar Créditos Fiscales",
+    "Retenciones IVA, NC",
+]
 Option = 1
 
 def updateTimer():
@@ -31,7 +37,7 @@ def updateTimer():
     minutes = int(elapsed_time // 60)
     seconds = int(elapsed_time % 60)
     TimeLabel.config(text=f"Tiempo transcurrido: {minutes:02}:{seconds:02}")
-    Window.after(1000, updateTimer)  # Actualiza cada segundo
+    Window.after(1000, updateTimer)  
 
 def showAlert(message, type = 1):
     if type == 1: 
@@ -44,7 +50,8 @@ def cerrar():
 def selectDirectory(option):    
     global Directory, Directory2, Label    
     Window.update_idletasks()    
-    directory = filedialog.askdirectory(parent=Window, title="Seleccionar Directorio")
+    directory = filedialog.askdirectory(parent=Window, title="Seleccionar Directorio") if Option != 4 \
+        else filedialog.askopenfilename(title="Seleccionar archivo", filetypes=(("Archivos Excel", "*.xlsx *.xls *.xlsm"),))
     if not directory: return
     if option == 1: Directory = directory
     else: Directory2 = directory
@@ -54,8 +61,16 @@ def processOptions(event):
     global Option, Directory, Directory2
     #Directory = Directory2 = ""
     Option = 1 if CmbOptions.get() == CmbArray[0] else \
-        2 if CmbOptions.get() == CmbArray[1] else 3
-    Dir2Button.config(state= tk.DISABLED if Option == 1 else tk.ACTIVE)    
+        2 if CmbOptions.get() == CmbArray[1] else \
+        3 if CmbOptions.get() == CmbArray[2] else 4
+    DirButton.config(
+        #state=tk.DISABLED if Option == 1 else tk.ACTIVE, 
+        text="Seleccionar Archivo" if Option == 4 else "Seleccionar Directorio"
+    )
+    Dir2Button.config(
+        state=tk.DISABLED if Option == 1 else tk.ACTIVE, 
+        text="S. Libro de compras" if Option == 4 else "Seleccionar Directorio"
+    )
 
 def process():        
     global MessageLabel
@@ -78,35 +93,45 @@ def runProcess():
         DirButton.config(state=tk.DISABLED)
         Dir2Button.config(state=tk.DISABLED)
         updateTimer()
-        processPdf(Option, Directory)
-        if Option == 1: renameFiles()
-        else: createTextFile(Directory2)
+        if Option != 4:
+            processPdf(Option, Directory)
+            if Option == 1: renameFiles()
+            else: createTextFile(Directory2)
+        else:
+            processPurchases(file1=Directory, file2=Directory2)
         Running = False
-        message = getMessage()
+        message = getMessage() if Option != 4 else getMessageExcel()
         MessageLabel = f"¡Proceso completado! \n{message}"
         Label.config(text=MessageLabel)
-        if getErrorsCounter() == 0:
+        if (Option != 4 and getErrorsCounter() == 0) or (Option == 4 and getErrorsCounterExcel() == 0):
             return messagebox.showinfo(f"{CmbOptions.get()}", message)            
         messagebox.showerror(f"{CmbOptions.get()} Error", message)    
     except Exception as e:
         messagebox.showerror(f"Error principal: {str(e)}")
+        print(str(e))
     finally:
         ProcessButton.config(state=tk.NORMAL)
         DirButton.config(state=tk.NORMAL)
-        if Option == 2: Dir2Button.config(state=tk.NORMAL)
+        if Option == 2 or Option == 4: Dir2Button.config(state=tk.NORMAL)
         reset()
 
 def validateUser():
     text = Input.get()
     if text == '' or text != "230498": 
         Input.delete(0, tk.END)
-        return messagebox.showerror('Error', "Contraseña erronea")
+        return None
     LoginWindow.destroy()
     frame()
+    return True
+
+def on_key_release(event = None):        
+    if not validateUser():
+        messagebox.showerror('Error', "Token erroneo")
+        Input.focus_set()
+        return "break"
 
 def login():
-    global Input, LoginWindow
-    # Crear LoginWindow
+    global Input, LoginWindow    
     LoginWindow = tk.Tk()
     LoginWindow.title(TitleApp)    
     LoginWindow.resizable(False, False)
@@ -118,13 +143,21 @@ def login():
     pos_x = (screenWidth // 2) - (windowWidth // 2)
     pos_y = (screenHeight // 2) - (windowHeigth // 2)
     LoginWindow.geometry(f"{windowWidth}x{windowHeigth}+{pos_x}+{pos_y}")
+    label = tk.Label(
+        Window, 
+        text="Ingrese el token", 
+        font=("Arial", 12, "bold")
+    )
+    label.pack(pady=20)
     Input = ttk.Entry(LoginWindow, width=30, show="*")
-    Input.pack(pady=40)
+    Input.pack(pady=1)
+    Input.focus_set()
     style = ttk.Style()
     style.configure("TButton", font=("Arial", 10), padding=5)    
     style.configure("TEntry", font=("Arial", 10, "bold"), padding=5)    
-    button = ttk.Button(LoginWindow, text="Ingresar", command=validateUser)
-    button.pack(pady=0)    
+    button = ttk.Button(LoginWindow, text="Ingresar", command=on_key_release)
+    button.pack(pady=20)            
+    Input.bind("<Return>", on_key_release)
     LoginWindow.mainloop()
 
 def frame():    
@@ -169,6 +202,6 @@ def frame():
     ProcessButton.pack(pady=10)
     Window.mainloop()
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     #frame()
     login()
